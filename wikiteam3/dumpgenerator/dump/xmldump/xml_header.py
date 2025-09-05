@@ -10,122 +10,42 @@ from wikiteam3.dumpgenerator.log import log_error
 from wikiteam3.dumpgenerator.dump.page.xmlexport.page_xml import get_XML_page
 from wikiteam3.dumpgenerator.config import Config
 
+HEADER = '''\
+<mediawiki xmlns="http://www.mediawiki.org/xml/export-0.11/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mediawiki.org/xml/export-0.11/ http://www.mediawiki.org/xml/export-0.11.xsd" version="0.11" xml:lang="zh">
+  <siteinfo>
+    <sitename>萌娘百科</sitename>
+    <dbname>zhmoegirl</dbname>
+    <base>https://zh.moegirl.org.cn/</base>
+    <generator>MediaWiki 1.43.3</generator>
+    <case>first-letter</case>
+    <namespaces>
+      <namespace key="-2" case="first-letter">Media</namespace>
+      <namespace key="-1" case="first-letter">Special</namespace>
+      <namespace key="0" case="first-letter" />
+      <namespace key="1" case="first-letter">Talk</namespace>
+      <namespace key="2" case="first-letter">User</namespace>
+      <namespace key="3" case="first-letter">User talk</namespace>
+      <namespace key="4" case="first-letter">萌娘百科</namespace>
+      <namespace key="5" case="first-letter">萌娘百科 talk</namespace>
+      <namespace key="6" case="first-letter">File</namespace>
+      <namespace key="7" case="first-letter">File talk</namespace>
+      <namespace key="8" case="first-letter">MediaWiki</namespace>
+      <namespace key="9" case="first-letter">MediaWiki talk</namespace>
+      <namespace key="10" case="first-letter">Template</namespace>
+      <namespace key="11" case="first-letter">Template talk</namespace>
+      <namespace key="12" case="first-letter">Help</namespace>
+      <namespace key="13" case="first-letter">Help talk</namespace>
+      <namespace key="14" case="first-letter">Category</namespace>
+      <namespace key="15" case="first-letter">Category talk</namespace>
+      <namespace key="274" case="first-letter">Widget</namespace>
+      <namespace key="275" case="first-letter">Widget talk</namespace>
+      <namespace key="710" case="first-letter">TimedText</namespace>
+      <namespace key="711" case="first-letter">TimedText talk</namespace>
+      <namespace key="828" case="first-letter">Module</namespace>
+      <namespace key="829" case="first-letter">Module talk</namespace>
+    </namespaces>
+  </siteinfo>
+'''
+
 def getXMLHeader(config: Config, session: requests.Session) -> Tuple[str, Config]:
-    """Retrieve a random page to extract XML headers (namespace info, etc)"""
-    # get the header of a random page, to attach it in the complete XML backup
-    # similar to: <mediawiki xmlns="http://www.mediawiki.org/xml/export-0.3/"
-    # xmlns:x....
-    randomtitle = "Main_Page"  # previously AMF5LKE43MNFGHKSDMRTJ
-    print(config.api)
-    xml = ""
-    disableSpecialExport = config.xmlrevisions or config.xmlapiexport
-    if disableSpecialExport and config.api and config.api.endswith("api.php"):
-        try:
-            print("Getting the XML header from the API")
-            # Export and exportnowrap exist from MediaWiki 1.15, allpages from 1.8
-            r = session.get(
-                config.api
-                + "?action=query&export=1&exportnowrap=1&list=allpages&aplimit=1",
-                timeout=10,
-            )
-            xml: str = r.text
-            # Otherwise try without exportnowrap, e.g. Wikia returns a blank page on 1.19
-            if not re.match(r"\s*<mediawiki", xml):
-                r = session.get(
-                    config.api
-                    + "?action=query&export=1&list=allpages&aplimit=1&format=json",
-                    timeout=10,
-                )
-                try:
-                    xml = r.json()["query"]["export"]["*"]
-                except KeyError:
-                    pass
-            if not re.match(r"\s*<mediawiki", xml):
-                # Do without a generator, use our usual trick of a random page title
-                r = session.get(
-                    config.api
-                    + "?action=query&export=1&exportnowrap=1&titles="
-                    + randomtitle,
-                    timeout=10,
-                )
-                xml = r.text
-            # Again try without exportnowrap
-            if not re.match(r"\s*<mediawiki", xml):
-                r = session.get(
-                    config.api
-                    + "?action=query&export=1&format=json&titles="
-                    + randomtitle,
-                    timeout=10,
-                )
-                try:
-                    xml = r.json()["query"]["export"]["*"]
-                except KeyError:
-                    pass
-        except requests.exceptions.RetryError:
-            pass
-
-    else:
-        try:
-            xml = "".join(
-                [
-                    x
-                    for x in get_XML_page(
-                        config=config, title=randomtitle, verbose=False, session=session
-                    )
-                ]
-            )
-        except PageMissingError as pme:
-            # The <page> does not exist. Not a problem, if we get the <siteinfo>.
-            xml = pme.xml
-        # Issue 26: Account for missing "Special" namespace.
-        # Hope the canonical special name has not been removed.
-        # http://albens73.fr/wiki/api.php?action=query&meta=siteinfo&siprop=namespacealiases
-        except ExportAbortedError:
-            try:
-                if config.api:
-                    print("Trying the local name for the Special namespace instead")
-                    r = session.get(
-                        url=config.api,
-                        params={
-                            "action": "query",
-                            "meta": "siteinfo",
-                            "siprop": "namespaces",
-                            "format": "json",
-                        },
-                        timeout=120,
-                    )
-                    config.export = (
-                        json.loads(r.text)["query"]["namespaces"]["-1"]["*"] + ":Export"
-                    )
-                    xml = "".join(
-                        [
-                            x
-                            for x in get_XML_page(
-                                config=config,
-                                title=randomtitle,
-                                verbose=False,
-                                session=session,
-                            )
-                        ]
-                    )
-            except PageMissingError as pme:
-                xml = pme.xml
-            except ExportAbortedError:
-                pass
-
-    header = xml.split("</mediawiki>")[0]
-    if not re.match(r"\s*<mediawiki", xml):
-        if config.xmlrevisions:
-            # Try again the old way
-            print(
-                "Export test via the API failed. Wiki too old? Trying without xmlrevisions."
-            )
-            config.xmlrevisions = False
-            header, config = getXMLHeader(config=config, session=session)
-        else:
-            print(xml)
-            print("XML export on this wiki is broken, quitting.")
-            log_error(config=config, to_stdout=True,
-                      text="XML export on this wiki is broken, quitting.")
-            sys.exit(1)
-    return header, config
+    return HEADER, config
