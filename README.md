@@ -1,4 +1,17 @@
-# `wikiteam3`
+# `wikiteam3` (moegirl)
+
+```bash
+#!/bin/bash
+exec wikiteam3dumpgenerator \
+  --api 'https://zh.moegirl.org.cn/api.php' \
+  --index 'https://zh.moegirl.org.cn/index.php' \
+  --user '********' \
+  --pass '********' \
+  --force \
+  --xml --xmlrevisions \
+  --delay 5
+#  --resume --path 'zh.moegirl.org.cn-20251002-wikidump' \
+```
 
 ![Dynamic JSON Badge](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Farchive.org%2Fadvancedsearch.php%3Fq%3Dsubject%3Awikiteam3%26rows%3D1%26page%3D1%26output%3Djson&query=%24.response.numFound&label=WikiTeam3%20Dumps%40IA)
 [![PyPI version](https://badge.fury.io/py/wikiteam3.svg)](https://badge.fury.io/py/wikiteam3)

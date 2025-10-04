@@ -63,6 +63,7 @@ def getXMLRevisionsByAllRevisions(config: Config, session: requests.Session, sit
             "list": "allrevisions",
             "arvlimit": config.api_chunksize,
             "arvdir": "newer",
+            "arvstart": "2023-07-01T00:00:00.000Z",
         }
         if namespace != __ALL_NAMESPACE:
             arv_params['arvnamespace'] = namespace
