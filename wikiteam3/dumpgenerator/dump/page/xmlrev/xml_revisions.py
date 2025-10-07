@@ -64,6 +64,7 @@ def getXMLRevisionsByAllRevisions(config: Config, session: requests.Session, sit
             "arvlimit": config.api_chunksize,
             "arvdir": "newer",
             "arvstart": "2023-07-01T00:00:00.000Z",
+            "arvend": "2024-01-01T00:00:00.000Z",
         }
         if namespace != __ALL_NAMESPACE:
             arv_params['arvnamespace'] = namespace
@@ -82,7 +83,7 @@ def getXMLRevisionsByAllRevisions(config: Config, session: requests.Session, sit
                 "Trying to get wikitext from the allrevisions API and to build the XML"
             )
             while True:
-                print("[arvcontinue]:", arv_params.get("arvcontinue", ""))
+                print(datetime.now(), "[arvcontinue]:", arv_params.get("arvcontinue", ""), flush=True)
                 try:
                     allrevs_response = site.api(
                         http_method=config.http_method, **arv_params
