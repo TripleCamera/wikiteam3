@@ -10,7 +10,7 @@ exec wikiteam3dumpgenerator \
   --force \
   --xml --xmlrevisions \
   --delay 4 \
-  | tee moegirl_2024B.log
+  | tee moegirl_2025A.log
 #  --resume --path 'zh.moegirl.org.cn-20251002-wikidump' \
 ```
 
